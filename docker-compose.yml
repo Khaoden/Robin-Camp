@@ -1,0 +1,50 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: movie-db
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+      POSTGRES_DB: moviedb
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - movie-network
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: movie-api
+    environment:
+      PORT: 8080
+      DB_URL: jdbc:postgresql://db:5432/moviedb?sslmode=disable
+      DB_USER: app
+      DB_PASSWORD: app
+      AUTH_TOKEN: ${AUTH_TOKEN}
+      BOXOFFICE_URL: ${BOXOFFICE_URL}
+      BOXOFFICE_API_KEY: ${BOXOFFICE_API_KEY}
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - movie-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+networks:
+  movie-network:
+    driver: bridge
